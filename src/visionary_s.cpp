@@ -195,9 +195,16 @@ void publishPointCloud(std_msgs::Header header, VisionarySData& dataHandler)
   for (size_t index = 0; index < cloudSize; ++index, ++itConf, ++itRGBA, ++itPC)
   {
     memcpy(&cloudMsg->data[index * cloudMsg->point_step + cloudMsg->fields[0].offset], &*itPC, sizeof(PointXYZ));
-
     memcpy(&cloudMsg->data[index * cloudMsg->point_step + cloudMsg->fields[3].offset], &*itConf, sizeof(uint16_t));
-    memcpy(&cloudMsg->data[index * cloudMsg->point_step + cloudMsg->fields[4].offset], &*itRGBA, sizeof(uint32_t));
+    
+    // Convert BGRA to RGBA
+    uint32_t bgra = *itRGBA;
+    uint32_t rgba = ((bgra & 0x00FF0000) >> 16) |  // Move B to R position
+                    ((bgra & 0x0000FF00)) |         // Keep G in place
+                    ((bgra & 0x000000FF) << 16) |   // Move R to B position
+                    ((bgra & 0xFF000000));          // Keep A in place
+    
+    memcpy(&cloudMsg->data[index * cloudMsg->point_step + cloudMsg->fields[4].offset], &rgba, sizeof(uint32_t));
   }
   gPubPoints.publish(cloudMsg);
 }
