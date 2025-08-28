@@ -12,6 +12,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <std_msgs/ByteMultiArray.h>
 #include <memory>
+#include <Eigen/Dense>
 
 #include <diagnostic_updater/diagnostic_updater.h>
 #include <diagnostic_updater/publisher.h>
@@ -184,6 +185,20 @@ void publishPointCloud(std_msgs::Header header, VisionarySData& dataHandler)
   std::vector<PointXYZ> pointCloud;
   dataHandler.generatePointCloud(pointCloud);
   dataHandler.transformPointCloud(pointCloud);
+
+  Eigen::Matrix3f rotation;
+  rotation << -1,  0,  0,   // cos(180°) = -1, sin(180°) = 0
+              0, -1,  0,   // -sin(180°) = 0, cos(180°) = -1
+              0,  0,  1;   // Z-axis unchanged
+
+  for (auto& point : pointCloud)
+  {
+    Eigen::Vector3f p(point.x, point.y, point.z);
+    Eigen::Vector3f rotated = rotation * p;
+    point.x = rotated.x();
+    point.y = rotated.y();
+    point.z = rotated.z();
+  }
 
   // simple copy to create a XYZ point cloud
   // memcpy(&cloud_msg->data[0], &pointCloud[0], pointCloud.size()*sizeof(PointXYZ));
